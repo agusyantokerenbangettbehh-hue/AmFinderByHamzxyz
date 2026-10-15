@@ -10,7 +10,6 @@ const errorMsg = document.getElementById("error");
 const loading = document.getElementById("loading");
 const videoBox = document.getElementById("videoContainer");
 const backBtn = document.getElementById("backBtn");
-const debugBox = document.getElementById("debugBox");
 const tabs = document.querySelectorAll(".tab");
 
 const POLA_LINK = [
@@ -31,13 +30,10 @@ function extractVideoId(url) {
   return m ? m[1] : null;
 }
 
-// ============================================
-// FETCH VIA VERCEL SERVERLESS PROXY
-// ============================================
+// Fetch via Vercel serverless proxy
 async function fetchTikwm(targetUrl, timeout = 30000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
-
   try {
     const url = `/api/proxy?url=${encodeURIComponent(targetUrl)}`;
     const res = await fetch(url, { signal: controller.signal });
@@ -48,9 +44,7 @@ async function fetchTikwm(targetUrl, timeout = 30000) {
   }
 }
 
-// ============================================
 // TAB SWITCHING
-// ============================================
 tabs.forEach(t => {
   t.addEventListener("click", () => {
     tabs.forEach(x => x.classList.remove("active"));
@@ -73,9 +67,7 @@ backBtn.addEventListener("click", () => {
   if (videoTerakhir) tampilGrid(videoTerakhir);
 });
 
-// ============================================
 // TOMBOL CARI
-// ============================================
 searchBtn.addEventListener("click", async () => {
   const val = inputField.value.trim();
   if (!val) { alert("Isi dulu cuy!"); return; }
@@ -113,15 +105,9 @@ function resetAll() {
   linkList.innerHTML = "";
   videoBox.innerHTML = "";
   gridList.innerHTML = "";
-  if (debugBox) {
-    debugBox.style.display = "none";
-    debugBox.innerHTML = "";
-  }
 }
 
-// ============================================
 // SEARCH BY JUDUL LAGU
-// ============================================
 async function cariLagu(keyword) {
   try {
     const target = `https://www.tikwm.com/api/feed/search?keywords=${encodeURIComponent(keyword)}&count=10`;
@@ -135,8 +121,6 @@ async function cariLagu(keyword) {
     if (!Array.isArray(videos) || videos.length === 0) {
       throw new Error("Video tidak ditemukan. Coba kata kunci lain.");
     }
-
-    console.log(`🎵 Search "${keyword}": ${videos.length} video ketemu`);
 
     videoTerakhir = videos;
     tampilGrid(videos);
@@ -172,9 +156,7 @@ function tampilGrid(videos) {
   });
 }
 
-// ============================================
 // PILIH VIDEO DARI GRID
-// ============================================
 async function pilihVideo(v) {
   gridArea.classList.add("hidden");
   resultArea.classList.remove("hidden");
@@ -186,8 +168,6 @@ async function pilihVideo(v) {
   try {
     const videoId = v.video_id || v.aweme_id || v.id || v.item_id;
     const user = v.author ? v.author.unique_id : null;
-
-    console.log("🎬 Video dipilih:", { videoId, user, title: v.title });
 
     tampilVideo(v);
     if (user && videoId) tampilTombolTikTok(user, videoId);
@@ -226,9 +206,7 @@ function tampilTombolTikTok(user, videoId) {
   videoBox.appendChild(btn);
 }
 
-// ============================================
 // AMBIL KOMENTAR BY VIDEO_ID (dari grid)
-// ============================================
 async function ambilKomentarByVideoId(videoId, user) {
   const teks = [];
 
@@ -244,23 +222,17 @@ async function ambilKomentarByVideoId(videoId, user) {
 
   for (const u of urls) {
     try {
-      console.log("🔍 Coba comment/list:", u);
       data = await fetchTikwm(
         `https://www.tikwm.com/api/comment/list?url=${encodeURIComponent(u)}&count=50`
       );
-      if (data?.code === 0 && Array.isArray(data.data?.comments)) {
-        console.log("✅ Berhasil pakai:", u);
-        break;
-      }
-      console.warn("❌ Gagal:", u, data?.msg);
+      if (data?.code === 0 && Array.isArray(data.data?.comments)) break;
       data = null;
     } catch (e) {
-      console.warn("❌ Error:", u, e.message);
+      console.warn("comment/list error:", e.message);
     }
   }
 
   if (!data || data?.code !== 0 || !Array.isArray(data.data?.comments)) {
-    console.warn("Semua format comment/list gagal");
     return "";
   }
 
@@ -268,7 +240,6 @@ async function ambilKomentarByVideoId(videoId, user) {
   komentar.forEach(k => { if (k.text) teks.push(k.text); });
 
   const punyaReply = komentar.filter(k => k.reply_total > 0).slice(0, 20);
-  console.log(`📩 ${komentar.length} komentar utama, ${punyaReply.length} bakal di-scan replynya`);
 
   for (const k of punyaReply) {
     try {
@@ -280,7 +251,6 @@ async function ambilKomentarByVideoId(videoId, user) {
 
       if (rd?.code === 0 && Array.isArray(rd.data?.comments)) {
         rd.data.comments.forEach(b => { if (b.text) teks.push(b.text); });
-        console.log(`✅ Reply ${k.id}: ${rd.data.comments.length}`);
 
         const nested = rd.data.comments.filter(b => b.reply_total > 0).slice(0, 10);
         for (const n of nested) {
@@ -294,8 +264,6 @@ async function ambilKomentarByVideoId(videoId, user) {
             }
           } catch (e) { console.warn("nested gagal:", e.message); }
         }
-      } else {
-        console.warn(`❌ Reply ${k.id}:`, rd?.msg);
       }
     } catch (e) { console.warn("reply error:", e.message); }
   }
@@ -303,9 +271,7 @@ async function ambilKomentarByVideoId(videoId, user) {
   return teks.join(" ");
 }
 
-// ============================================
 // AMBIL DATA VIDEO (Link Video)
-// ============================================
 async function ambilData(url) {
   const videoUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
   const komentarUrl = `https://www.tikwm.com/api/comment/list?url=${encodeURIComponent(url)}&count=50`;
@@ -330,7 +296,6 @@ async function ambilData(url) {
     komentar.forEach(k => { if (k.text) teks.push(k.text); });
 
     const punyaReply = komentar.filter(k => k.reply_total > 0).slice(0, 20);
-    console.log(`📩 ${komentar.length} komentar utama, ${punyaReply.length} bakal di-scan replynya`);
 
     for (const k of punyaReply) {
       try {
@@ -342,7 +307,6 @@ async function ambilData(url) {
 
         if (rd?.code === 0 && Array.isArray(rd.data?.comments)) {
           rd.data.comments.forEach(b => { if (b.text) teks.push(b.text); });
-          console.log(`✅ Reply ${k.id}: ${rd.data.comments.length}`);
 
           const nested = rd.data.comments.filter(b => b.reply_total > 0).slice(0, 10);
           for (const n of nested) {
@@ -356,8 +320,6 @@ async function ambilData(url) {
               }
             } catch (e) { console.warn("nested gagal:", e.message); }
           }
-        } else {
-          console.warn(`❌ Reply ${k.id}:`, rd?.msg);
         }
       } catch (e) { console.warn("reply error:", e.message); }
     }
@@ -366,9 +328,7 @@ async function ambilData(url) {
   return { teks: teks.join(" "), video: videoInfo };
 }
 
-// ============================================
 // TAMPILIN VIDEO
-// ============================================
 function tampilVideo(v) {
   const src = v.play || v.wmplay;
   const thumb = v.cover || v.origin_cover || "";
@@ -437,18 +397,11 @@ function fallbackThumb(v) {
   videoBox.appendChild(img);
 }
 
-// ============================================
 // CARI LINK PRESET
-// ============================================
 function cariLink(teks) {
-  console.log("=== TEKS YANG DISCAN ===");
-  console.log("Total karakter:", teks.length);
-
   const ketemu = teks.match(
     /(?:https?:\/\/)?(?:www\.)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s,;!?)\]}>"']*)?/gi
   ) || [];
-
-  console.log("Link mentah:", ketemu);
 
   const valid = ketemu
     .map(l => l.trim().replace(/[.,;:!?)\]}>"']+$/, ""))
@@ -474,19 +427,6 @@ function cariLink(teks) {
     }
   }
 
-  console.log("✅ Link valid (setelah dedup):", unik);
-
-  if (debugBox) {
-    debugBox.style.display = "block";
-    debugBox.innerHTML =
-      `<b>🔍 Teks yang di-scan (${teks.length} karakter):</b><br>` +
-      `<div style="max-height:120px; overflow:auto; background:white; padding:4px; margin:4px 0; border:1px solid #ccc; font-size:10px;">${teks.slice(0, 3000).replace(/</g, "&lt;")}</div>` +
-      `<b>🔗 Link mentah ketemu (${ketemu.length}):</b><br>` +
-      (ketemu.length ? ketemu.map(l => `• ${l}`).join("<br>") : "(kosong)") +
-      `<br><br><b>✅ Link valid (${unik.length}):</b><br>` +
-      (unik.length ? unik.map(l => `• ${l}`).join("<br>") : "(kosong)");
-  }
-
   const prioritas = l => /drive\.google|docs\.google|5mb|alight/i.test(l) ? 0 : 1;
   unik.sort((a, b) => prioritas(a) - prioritas(b));
 
@@ -499,9 +439,7 @@ function cariLink(teks) {
   unik.forEach(l => tambahItem(l));
 }
 
-// ============================================
 // TAMBAH ITEM KE LIST
-// ============================================
 function tambahItem(link) {
   const low = link.toLowerCase();
   const li = document.createElement("li");
