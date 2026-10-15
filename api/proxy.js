@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   }
 
   if (!target.startsWith('https://www.tikwm.com')) {
-    return res.status(403).json({ error: 'Domain ga diizinin' });
+    return res.status(403).json({ error: 'Domain tidak diizinkan' });
   }
 
   try {
