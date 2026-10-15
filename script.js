@@ -10,19 +10,54 @@ const errorMsg = document.getElementById("error");
 const loading = document.getElementById("loading");
 const videoBox = document.getElementById("videoContainer");
 const backBtn = document.getElementById("backBtn");
+const debugBox = document.getElementById("debugBox");
 const tabs = document.querySelectorAll(".tab");
 
-const POLA_LINK = ["5mb", "xml", "drive.google", "mediafire", "alight", "preset", "mega.nz", "dropbox"];
+const POLA_LINK = [
+  "drive.google", "docs.google",
+  "alight.link", "alightcreative.com", "alightmotion", "alight",
+  "5mb", "xml", "mediafire", "mega.nz", "dropbox",
+  "gofile", "pixeldrain", "tinyurl", "bit.ly", "shorturl",
+  "linktr.ee", "sfl.gl", "ouo.io", "shrinkme", "shrinke",
+  "sfile.mobi", "zippy", "whatsapp.com/channel", "wa.me"
+];
 
 let mode = "link";
 let videoTerakhir = null;
 
+function extractVideoId(url) {
+  if (!url) return null;
+  const m = url.match(/(\d{15,})/);
+  return m ? m[1] : null;
+}
+
+// ============================================
+// FETCH VIA VERCEL SERVERLESS PROXY
+// ============================================
+async function fetchTikwm(targetUrl, timeout = 30000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const url = `/api/proxy?url=${encodeURIComponent(targetUrl)}`;
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return JSON.parse(await res.text());
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ============================================
+// TAB SWITCHING
+// ============================================
 tabs.forEach(t => {
   t.addEventListener("click", () => {
     tabs.forEach(x => x.classList.remove("active"));
     t.classList.add("active");
     mode = t.dataset.mode;
     resetAll();
+
     if (mode === "link") {
       labelInput.innerText = "Masukan url tiktok";
       inputField.placeholder = "https://vt.tiktok.com/...";
@@ -38,6 +73,9 @@ backBtn.addEventListener("click", () => {
   if (videoTerakhir) tampilGrid(videoTerakhir);
 });
 
+// ============================================
+// TOMBOL CARI
+// ============================================
 searchBtn.addEventListener("click", async () => {
   const val = inputField.value.trim();
   if (!val) { alert("Isi dulu cuy!"); return; }
@@ -50,8 +88,7 @@ searchBtn.addEventListener("click", async () => {
   try {
     if (mode === "link") {
       if (!val.includes("tiktok.com")) { alert("Bukan link TikTok!"); return; }
-      const delay = new Promise(r => setTimeout(r, 1000));
-      const [hasil] = await Promise.all([ambilData(val), delay]);
+      const hasil = await ambilData(val);
       tampilVideo(hasil.video);
       cariLink(hasil.teks);
     } else {
@@ -76,38 +113,38 @@ function resetAll() {
   linkList.innerHTML = "";
   videoBox.innerHTML = "";
   gridList.innerHTML = "";
+  if (debugBox) {
+    debugBox.style.display = "none";
+    debugBox.innerHTML = "";
+  }
 }
 
 // ============================================
-// Proxy via serverless function (Vercel)
+// SEARCH BY JUDUL LAGU
 // ============================================
-async function proxied(targetUrl) {
-  const res = await fetch(`/api/proxy?url=${encodeURIComponent(targetUrl)}`);
-  if (!res.ok) throw new Error("Proxy HTTP " + res.status);
-  return await res.json();
-}
-
 async function cariLagu(keyword) {
   try {
     const target = `https://www.tikwm.com/api/feed/search?keywords=${encodeURIComponent(keyword)}&count=10`;
-    const data = await proxied(target);
+    const data = await fetchTikwm(target);
 
-    if (data.code !== 0) {
-      throw new Error("tikwm: " + (data.msg || "code " + data.code));
+    if (!data || data.code !== 0) {
+      throw new Error(data?.msg || "API pencarian gagal.");
     }
 
-    if (!data.data || !data.data.videos || data.data.videos.length === 0) {
-      throw new Error("Video kosong");
+    const videos = data.data?.videos;
+    if (!Array.isArray(videos) || videos.length === 0) {
+      throw new Error("Video tidak ditemukan. Coba kata kunci lain.");
     }
 
-    videoTerakhir = data.data.videos;
-    tampilGrid(data.data.videos);
+    console.log(`🎵 Search "${keyword}": ${videos.length} video ketemu`);
 
+    videoTerakhir = videos;
+    tampilGrid(videos);
   } catch (e) {
     console.error("cariLagu error:", e);
     resultArea.classList.remove("hidden");
     errorMsg.classList.remove("hidden");
-    errorMsg.innerText = "SEARCH ERROR: " + e.message;
+    errorMsg.innerText = "Search error: " + e.message;
   }
 }
 
@@ -135,6 +172,9 @@ function tampilGrid(videos) {
   });
 }
 
+// ============================================
+// PILIH VIDEO DARI GRID
+// ============================================
 async function pilihVideo(v) {
   gridArea.classList.add("hidden");
   resultArea.classList.remove("hidden");
@@ -147,29 +187,22 @@ async function pilihVideo(v) {
     const videoId = v.video_id || v.aweme_id || v.id || v.item_id;
     const user = v.author ? v.author.unique_id : null;
 
-    tampilVideo(v);
+    console.log("🎬 Video dipilih:", { videoId, user, title: v.title });
 
-    if (user && videoId) {
-      tampilTombolTikTok(user, videoId);
-    }
+    tampilVideo(v);
+    if (user && videoId) tampilTombolTikTok(user, videoId);
 
     const teks = [];
     if (v.title) teks.push(v.title);
-    if (v.content_desc && Array.isArray(v.content_desc)) {
-      teks.push(v.content_desc.join(" "));
-    }
+    if (Array.isArray(v.content_desc)) teks.push(v.content_desc.join(" "));
 
-    const komentar = await cobaAmbilKomentar(user, videoId);
-    teks.push(komentar);
+    if (videoId) {
+      const komen = await ambilKomentarByVideoId(videoId, user);
+      if (komen) teks.push(komen);
+    }
 
     loading.classList.add("hidden");
     cariLink(teks.join(" "));
-
-    if (komentar === "" && linkList.children.length === 0) {
-      errorMsg.classList.remove("hidden");
-      errorMsg.innerText = "Preset ga bisa di-scan otomatis. Klik 'Buka di TikTok' buat cek manual.";
-    }
-
   } catch (e) {
     console.error("pilihVideo error:", e);
     loading.classList.add("hidden");
@@ -179,130 +212,173 @@ async function pilihVideo(v) {
 }
 
 function tampilTombolTikTok(user, videoId) {
-  if (!user || !videoId) return;
-
   const btn = document.createElement("a");
   btn.href = `https://www.tiktok.com/@${user}/video/${videoId}`;
   btn.target = "_blank";
   btn.rel = "noopener noreferrer";
   btn.innerText = "🎵 Buka di TikTok";
-  btn.style.display = "block";
-  btn.style.textAlign = "center";
-  btn.style.background = "#ff0050";
-  btn.style.color = "white";
-  btn.style.padding = "10px";
-  btn.style.borderRadius = "6px";
-  btn.style.fontSize = "13px";
-  btn.style.fontWeight = "bold";
-  btn.style.textDecoration = "none";
-  btn.style.marginTop = "10px";
-  btn.style.border = "2px solid black";
-
+  Object.assign(btn.style, {
+    display: "block", textAlign: "center", background: "#ff0050",
+    color: "white", padding: "10px", borderRadius: "6px",
+    fontSize: "13px", fontWeight: "bold", textDecoration: "none",
+    marginTop: "10px", border: "2px solid black"
+  });
   videoBox.appendChild(btn);
 }
 
-async function cobaAmbilKomentar(user, videoId) {
-  if (!videoId) return "";
+// ============================================
+// AMBIL KOMENTAR BY VIDEO_ID (dari grid)
+// ============================================
+async function ambilKomentarByVideoId(videoId, user) {
+  const teks = [];
 
-  const formats = [];
+  const urls = [];
   if (user) {
-    formats.push(`https://www.tiktok.com/@${user}/video/${videoId}`);
-    formats.push(`https://m.tiktok.com/@${user}/video/${videoId}`);
+    urls.push(`https://www.tiktok.com/@${user}/video/${videoId}`);
+    urls.push(`https://m.tiktok.com/@${user}/video/${videoId}`);
   }
-  formats.push(`https://www.tiktok.com/video/${videoId}`);
-  formats.push(`https://m.tiktok.com/v/${videoId}.html`);
-  formats.push(`https://vt.tiktok.com/${videoId}`);
+  urls.push(`https://www.tiktok.com/video/${videoId}`);
+  urls.push(`https://m.tiktok.com/v/${videoId}.html`);
 
-  for (const urlTikTok of formats) {
+  let data = null;
+
+  for (const u of urls) {
     try {
-      const teksKom = await ambilKomentarByUrl(urlTikTok);
-      if (teksKom && teksKom.length > 0) {
-        return teksKom;
+      console.log("🔍 Coba comment/list:", u);
+      data = await fetchTikwm(
+        `https://www.tikwm.com/api/comment/list?url=${encodeURIComponent(u)}&count=50`
+      );
+      if (data?.code === 0 && Array.isArray(data.data?.comments)) {
+        console.log("✅ Berhasil pakai:", u);
+        break;
       }
+      console.warn("❌ Gagal:", u, data?.msg);
+      data = null;
     } catch (e) {
-      console.warn("Gagal:", urlTikTok, e.message);
+      console.warn("❌ Error:", u, e.message);
     }
   }
 
-  return "";
-}
-
-async function ambilKomentarByUrl(urlTikTok) {
-  const teks = [];
-
-  const target = `https://www.tikwm.com/api/comment/list?url=${encodeURIComponent(urlTikTok)}&count=50`;
-  const dataKomen = await proxied(target);
-
-  if (!dataKomen || dataKomen.code !== 0 || !dataKomen.data || !dataKomen.data.comments) {
+  if (!data || data?.code !== 0 || !Array.isArray(data.data?.comments)) {
+    console.warn("Semua format comment/list gagal");
     return "";
   }
 
-  for (const k of dataKomen.data.comments) {
-    if (k.text) teks.push(k.text);
-    if (k.reply_id) {
-      try {
-        const rTarget = `https://www.tikwm.com/api/comment/reply?comment_id=${k.reply_id}&count=20`;
-        const rd = await proxied(rTarget);
-        if (rd && rd.code === 0 && rd.data && rd.data.comments) {
-          rd.data.comments.forEach(b => { if (b.text) teks.push(b.text); });
+  const komentar = data.data.comments;
+  komentar.forEach(k => { if (k.text) teks.push(k.text); });
+
+  const punyaReply = komentar.filter(k => k.reply_total > 0).slice(0, 20);
+  console.log(`📩 ${komentar.length} komentar utama, ${punyaReply.length} bakal di-scan replynya`);
+
+  for (const k of punyaReply) {
+    try {
+      await new Promise(r => setTimeout(r, 800));
+
+      const rd = await fetchTikwm(
+        `https://www.tikwm.com/api/comment/reply?video_id=${videoId}&comment_id=${k.id}&count=50`
+      );
+
+      if (rd?.code === 0 && Array.isArray(rd.data?.comments)) {
+        rd.data.comments.forEach(b => { if (b.text) teks.push(b.text); });
+        console.log(`✅ Reply ${k.id}: ${rd.data.comments.length}`);
+
+        const nested = rd.data.comments.filter(b => b.reply_total > 0).slice(0, 10);
+        for (const n of nested) {
+          try {
+            await new Promise(r => setTimeout(r, 800));
+            const rd2 = await fetchTikwm(
+              `https://www.tikwm.com/api/comment/reply?video_id=${videoId}&comment_id=${n.id}&count=30`
+            );
+            if (rd2?.code === 0 && Array.isArray(rd2.data?.comments)) {
+              rd2.data.comments.forEach(b => { if (b.text) teks.push(b.text); });
+            }
+          } catch (e) { console.warn("nested gagal:", e.message); }
         }
-      } catch (e) {
-        console.warn("reply gagal", e);
+      } else {
+        console.warn(`❌ Reply ${k.id}:`, rd?.msg);
       }
-    }
+    } catch (e) { console.warn("reply error:", e.message); }
   }
 
   return teks.join(" ");
 }
 
+// ============================================
+// AMBIL DATA VIDEO (Link Video)
+// ============================================
 async function ambilData(url) {
-  const teks = [];
+  const videoUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
+  const komentarUrl = `https://www.tikwm.com/api/comment/list?url=${encodeURIComponent(url)}&count=50`;
 
-  const target = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
-  const dataVideo = await proxied(target);
+  const [dataVideo, dataKomen] = await Promise.all([
+    fetchTikwm(videoUrl).catch(() => null),
+    fetchTikwm(komentarUrl).catch(() => null)
+  ]);
 
   if (!dataVideo || dataVideo.code !== 0 || !dataVideo.data) {
-    throw new Error("data kosong");
+    throw new Error("Data video kosong / link tidak valid");
   }
 
   const videoInfo = dataVideo.data;
+  const teks = [];
   if (videoInfo.title) teks.push(videoInfo.title);
 
-  try {
-    const kTarget = `https://www.tikwm.com/api/comment/list?url=${encodeURIComponent(url)}&count=50`;
-    const dataKomen = await proxied(kTarget);
+  const realVideoId = videoInfo.id || videoInfo.video_id || extractVideoId(url);
 
-    if (dataKomen && dataKomen.code === 0 && dataKomen.data && dataKomen.data.comments) {
-      for (const k of dataKomen.data.comments) {
-        if (k.text) teks.push(k.text);
-        if (k.reply_id) {
-          try {
-            const rTarget = `https://www.tikwm.com/api/comment/reply?comment_id=${k.reply_id}&count=20`;
-            const rd = await proxied(rTarget);
-            if (rd && rd.code === 0 && rd.data && rd.data.comments) {
-              rd.data.comments.forEach(b => { if (b.text) teks.push(b.text); });
-            }
-          } catch (e) { console.warn("reply gagal", e); }
+  if (dataKomen && dataKomen.code === 0 && Array.isArray(dataKomen.data?.comments)) {
+    const komentar = dataKomen.data.comments;
+    komentar.forEach(k => { if (k.text) teks.push(k.text); });
+
+    const punyaReply = komentar.filter(k => k.reply_total > 0).slice(0, 20);
+    console.log(`📩 ${komentar.length} komentar utama, ${punyaReply.length} bakal di-scan replynya`);
+
+    for (const k of punyaReply) {
+      try {
+        await new Promise(r => setTimeout(r, 800));
+
+        const rd = await fetchTikwm(
+          `https://www.tikwm.com/api/comment/reply?video_id=${realVideoId}&comment_id=${k.id}&count=50`
+        );
+
+        if (rd?.code === 0 && Array.isArray(rd.data?.comments)) {
+          rd.data.comments.forEach(b => { if (b.text) teks.push(b.text); });
+          console.log(`✅ Reply ${k.id}: ${rd.data.comments.length}`);
+
+          const nested = rd.data.comments.filter(b => b.reply_total > 0).slice(0, 10);
+          for (const n of nested) {
+            try {
+              await new Promise(r => setTimeout(r, 800));
+              const rd2 = await fetchTikwm(
+                `https://www.tikwm.com/api/comment/reply?video_id=${realVideoId}&comment_id=${n.id}&count=30`
+              );
+              if (rd2?.code === 0 && Array.isArray(rd2.data?.comments)) {
+                rd2.data.comments.forEach(b => { if (b.text) teks.push(b.text); });
+              }
+            } catch (e) { console.warn("nested gagal:", e.message); }
+          }
+        } else {
+          console.warn(`❌ Reply ${k.id}:`, rd?.msg);
         }
-      }
+      } catch (e) { console.warn("reply error:", e.message); }
     }
-  } catch (e) { console.warn("komentar gagal", e); }
+  }
 
   return { teks: teks.join(" "), video: videoInfo };
 }
 
+// ============================================
+// TAMPILIN VIDEO
+// ============================================
 function tampilVideo(v) {
   const src = v.play || v.wmplay;
   const thumb = v.cover || v.origin_cover || "";
-
   if (!src) { fallbackThumb(v); return; }
 
   const wrap = document.createElement("div");
-  wrap.style.position = "relative";
-  wrap.style.borderRadius = "8px";
-  wrap.style.overflow = "hidden";
-  wrap.style.border = "2px solid black";
-  wrap.style.background = "black";
+  Object.assign(wrap.style, {
+    position: "relative", borderRadius: "8px", overflow: "hidden",
+    border: "2px solid black", background: "black"
+  });
 
   if (thumb) {
     const img = document.createElement("img");
@@ -314,21 +390,13 @@ function tampilVideo(v) {
 
   const btn = document.createElement("div");
   btn.innerText = "▶";
-  btn.style.position = "absolute";
-  btn.style.top = "50%";
-  btn.style.left = "50%";
-  btn.style.transform = "translate(-50%,-50%)";
-  btn.style.width = "55px";
-  btn.style.height = "55px";
-  btn.style.borderRadius = "50%";
-  btn.style.background = "rgba(0,0,0,0.65)";
-  btn.style.color = "white";
-  btn.style.display = "flex";
-  btn.style.alignItems = "center";
-  btn.style.justifyContent = "center";
-  btn.style.fontSize = "22px";
-  btn.style.paddingLeft = "4px";
-  btn.style.cursor = "pointer";
+  Object.assign(btn.style, {
+    position: "absolute", top: "50%", left: "50%",
+    transform: "translate(-50%,-50%)", width: "55px", height: "55px",
+    borderRadius: "50%", background: "rgba(0,0,0,0.65)", color: "white",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: "22px", paddingLeft: "4px", cursor: "pointer"
+  });
   wrap.appendChild(btn);
 
   btn.addEventListener("click", () => {
@@ -369,25 +437,71 @@ function fallbackThumb(v) {
   videoBox.appendChild(img);
 }
 
+// ============================================
+// CARI LINK PRESET
+// ============================================
 function cariLink(teks) {
-  const ketemu = teks.match(/(https?:\/\/[^\s]+)/g) || [];
-  const valid = ketemu.filter(l => {
-    const low = l.toLowerCase();
-    return POLA_LINK.some(p => low.includes(p));
-  });
-  const unik = [...new Set(valid)];
+  console.log("=== TEKS YANG DISCAN ===");
+  console.log("Total karakter:", teks.length);
 
+  const ketemu = teks.match(
+    /(?:https?:\/\/)?(?:www\.)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s,;!?)\]}>"']*)?/gi
+  ) || [];
+
+  console.log("Link mentah:", ketemu);
+
+  const valid = ketemu
+    .map(l => l.trim().replace(/[.,;:!?)\]}>"']+$/, ""))
+    .filter(l => {
+      const low = l.toLowerCase();
+      return POLA_LINK.some(p => low.includes(p));
+    })
+    .map(l => (/^https?:\/\//i.test(l) ? l : "https://" + l));
+
+  const unik = [];
+  const seen = new Set();
+
+  for (const link of valid) {
+    const norm = link
+      .replace(/[?#].*$/, "")
+      .replace(/\/view\/?$/, "")
+      .replace(/\/+$/, "")
+      .toLowerCase();
+
+    if (!seen.has(norm)) {
+      seen.add(norm);
+      unik.push(link);
+    }
+  }
+
+  console.log("✅ Link valid (setelah dedup):", unik);
+
+  if (debugBox) {
+    debugBox.style.display = "block";
+    debugBox.innerHTML =
+      `<b>🔍 Teks yang di-scan (${teks.length} karakter):</b><br>` +
+      `<div style="max-height:120px; overflow:auto; background:white; padding:4px; margin:4px 0; border:1px solid #ccc; font-size:10px;">${teks.slice(0, 3000).replace(/</g, "&lt;")}</div>` +
+      `<b>🔗 Link mentah ketemu (${ketemu.length}):</b><br>` +
+      (ketemu.length ? ketemu.map(l => `• ${l}`).join("<br>") : "(kosong)") +
+      `<br><br><b>✅ Link valid (${unik.length}):</b><br>` +
+      (unik.length ? unik.map(l => `• ${l}`).join("<br>") : "(kosong)");
+  }
+
+  const prioritas = l => /drive\.google|docs\.google|5mb|alight/i.test(l) ? 0 : 1;
+  unik.sort((a, b) => prioritas(a) - prioritas(b));
+
+  resultArea.classList.remove("hidden");
   if (unik.length === 0) {
-    resultArea.classList.remove("hidden");
     errorMsg.classList.remove("hidden");
     errorMsg.innerText = "Preset tidak ditemukan di video ini cuy. Coba video lain. 😢";
     return;
   }
-
-  resultArea.classList.remove("hidden");
   unik.forEach(l => tambahItem(l));
 }
 
+// ============================================
+// TAMBAH ITEM KE LIST
+// ============================================
 function tambahItem(link) {
   const low = link.toLowerCase();
   const li = document.createElement("li");
@@ -400,17 +514,38 @@ function tambahItem(link) {
     label = "GOOGLE DRIVE";
     href = ubahDrive(link);
     kelas = "drive";
+  } else if (low.includes("5mb")) {
+    label = "5MB.APP";
   } else if (low.includes("mediafire")) {
     label = "MEDIAFIRE";
   } else if (low.includes("mega.nz")) {
     label = "MEGA";
   } else if (low.includes("dropbox")) {
     label = "DROPBOX";
-  } else if (low.includes("xml")) {
+  } else if (low.includes("gofile")) {
+    label = "GOFILE";
+  } else if (low.includes("pixeldrain")) {
+    label = "PIXELDRAIN";
+  } else if (low.includes("whatsapp.com/channel")) {
+    label = "SALURAN WA";
+  } else if (low.includes("wa.me")) {
+    label = "WHATSAPP";
+  } else if (low.includes("alightcreative.com")) {
+    label = "ALIGHT CREATIVE";
+  } else if (low.includes("alight.link")) {
+    label = "ALIGHT.LINK";
+  } else if (low.includes("tinyurl") || low.includes("bit.ly") ||
+             low.includes("shorturl") || low.includes("sfl.gl") ||
+             low.includes("ouo.io") || low.includes("shrinkme") ||
+             low.includes("shrinke")) {
+    label = "SHORT LINK";
+  } else if (low.includes("linktr.ee")) {
+    label = "LINKTREE";
+  } else if (low.includes("sfile.mobi") || low.includes("zippy")) {
+    label = "SFILE";
+  } else if (low.endsWith(".xml") || low.includes("/xml/")) {
     label = "FILE XML";
     kelas = "xml";
-  } else if (low.includes("5mb")) {
-    label = "5MB.APP";
   }
 
   if (kelas) li.classList.add(kelas);
