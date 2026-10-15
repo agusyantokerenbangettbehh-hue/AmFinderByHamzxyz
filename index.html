@@ -1,0 +1,54 @@
+<html>
+  <head>
+    <title>Alight Motion Finder</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="header">
+      <h1>Alight Motion Finder By Hamzxyz</h1>
+      <p>Tanpa login dan tanpa iklan</p>
+    </div>
+
+    <div class="content">
+      <div class="tabs">
+        <button class="tab active" data-mode="link">Link Video</button>
+        <button class="tab" data-mode="song">Judul Lagu</button>
+      </div>
+
+      <p id="labelInput">Masukan url tiktok</p>
+      <input type="text" id="inputField" placeholder="https://vt.tiktok.com/...">
+      <button id="searchBtn">Cari</button>
+
+      <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Mencari preset...</p>
+      </div>
+    </div>
+
+    <div id="gridHasil" class="grid-area hidden">
+      <h3>Pilih video:</h3>
+      <div id="gridList" class="grid-list"></div>
+    </div>
+
+    <div id="hasil" class="hasil-area hidden">
+      <button id="backBtn" class="back-btn">← Kembali</button>
+      <div id="videoContainer"></div>
+      <h3>Hasil pencarian</h3>
+      <ul id="linkList"></ul>
+      <p id="error" class="error-msg hidden"></p>
+    </div>
+
+    <div class="contantdev">
+      <h2>Hubungi saya jika menemukan bug!</h2>
+      <div class="sosial">
+        <a href="https://wa.me/628157154618">
+          <img src="img/wa.webp">
+        </a>
+        <a href="https://www.tiktok.com/@yanzknjut1?_r=1&_t=ZS-9AY6dIds6qb">
+          <img src="img/tt.webp">
+        </a>
+      </div>
+    </div>
+  </body>
+  <script src="script.js"></script>
+</html>
