@@ -12,39 +12,39 @@ const videoBox = document.getElementById("videoContainer");
 const backBtn = document.getElementById("backBtn");
 const tabs = document.querySelectorAll(".tab");
 
-const POLA_LINK = [
-  "drive.google", "docs.google",
-  "alight.link", "alightcreative.com", "alightmotion", "alight",
-  "5mb", "xml", "mediafire", "mega.nz", "dropbox",
-  "gofile", "pixeldrain", "tinyurl", "bit.ly", "shorturl",
-  "linktr.ee", "sfl.gl", "ouo.io", "shrinkme", "shrinke",
-  "sfile.mobi", "zippy", "whatsapp.com/channel", "wa.me"
-];
+// Elemen untuk AM Prem
+const defaultInput = document.getElementById("defaultInput");
+const ampremInput = document.getElementById("ampremInput");
+const emailField = document.getElementById("emailField");
+const linkField = document.getElementById("linkField");
+const sendLinkBtn = document.getElementById("sendLinkBtn");
+
+const API_BASE = "https://api.synoxcloud.xyz";
+const API_KEY = "FREE";
 
 let mode = "link";
-let videoTerakhir = null;
 
-function extractVideoId(url) {
-  if (!url) return null;
-  const m = url.match(/(\d{15,})/);
-  return m ? m[1] : null;
-}
+// ============================================
+// FETCH API BAWAAN
+// ============================================
+async function fetchAPI(endpoint, params = {}) {
+  const url = new URL(API_BASE + endpoint);
+  Object.keys(params).forEach(k => url.searchParams.append(k, params[k]));
+  url.searchParams.append("apikey", API_KEY);
 
-// Fetch via Vercel serverless proxy
-async function fetchTikwm(targetUrl, timeout = 30000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
-  try {
-    const url = `/api/proxy?url=${encodeURIComponent(targetUrl)}`;
-    const res = await fetch(url, { signal: controller.signal });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return JSON.parse(await res.text());
-  } finally {
-    clearTimeout(timer);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const json = await res.json();
+  
+  if (!json.status) {
+    throw new Error(json.message || "API Error");
   }
+  return json.result;
 }
 
+// ============================================
 // TAB SWITCHING
+// ============================================
 tabs.forEach(t => {
   t.addEventListener("click", () => {
     tabs.forEach(x => x.classList.remove("active"));
@@ -52,23 +52,102 @@ tabs.forEach(t => {
     mode = t.dataset.mode;
     resetAll();
 
-    if (mode === "link") {
-      labelInput.innerText = "Masukan url tiktok";
-      inputField.placeholder = "https://vt.tiktok.com/...";
+    if (mode === "amprem") {
+      defaultInput.classList.add("hidden");
+      ampremInput.classList.remove("hidden");
+      searchBtn.innerText = "Klaim Premium";
     } else {
-      labelInput.innerText = "Ketik judul lagu";
-      inputField.placeholder = "contoh: shape of you";
+      ampremInput.classList.add("hidden");
+      defaultInput.classList.remove("hidden");
+      searchBtn.innerText = "Cari";
+
+      if (mode === "link") {
+        labelInput.innerText = "Masukan url tiktok";
+        inputField.placeholder = "https://vt.tiktok.com/...";
+      } else if (mode === "song") {
+        labelInput.innerText = "Ketik judul lagu / keyword";
+        inputField.placeholder = "contoh: ku bukan superstar";
+      }
     }
   });
 });
 
 backBtn.addEventListener("click", () => {
   resetAll();
-  if (videoTerakhir) tampilGrid(videoTerakhir);
 });
 
-// TOMBOL CARI
+// ============================================
+// LOGIKA TOMBOL "KIRIM MAGIC LINK" (AM PREM)
+// ============================================
+sendLinkBtn.addEventListener("click", async () => {
+  const email = emailField.value.trim();
+  if (!email) { alert("Isi email Alight Motion dulu!"); return; }
+
+  const originalText = sendLinkBtn.innerText;
+  sendLinkBtn.disabled = true;
+  sendLinkBtn.innerText = "Mengirim...";
+  
+  try {
+    const url = `https://api.iroha-api.web.id/v1/amprem?step=send&email=${encodeURIComponent(email)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    alert("Magic link berhasil dikirim ke email! Cek inbox/spam email kamu, lalu copy link verifikasinya ke kolom bawah.");
+    linkField.focus();
+
+  } catch (e) {
+    alert("Gagal kirim magic link: " + e.message);
+  } finally {
+    sendLinkBtn.disabled = false;
+    sendLinkBtn.innerText = originalText;
+  }
+});
+
+// ============================================
+// TOMBOL CARI / KLAIM PREMIUM
+// ============================================
 searchBtn.addEventListener("click", async () => {
+  // Logika AM Prem
+  if (mode === "amprem") {
+    const email = emailField.value.trim();
+    const link = linkField.value.trim();
+
+    if (!email) { alert("Isi email Alight Motion dulu cuy!"); return; }
+    if (!link) { alert("Masukan Magic Link verifikasi yang udah dikirim ke email kamu dulu!"); return; }
+
+    resetAll();
+    loading.classList.remove("hidden");
+    searchBtn.disabled = true;
+    searchBtn.innerText = "Memproses...";
+
+    try {
+      const url = `https://api.iroha-api.web.id/v1/amprem?step=unlock&email=${encodeURIComponent(email)}&link=${encodeURIComponent(link)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      resultArea.classList.remove("hidden");
+      videoBox.innerHTML = ""; 
+      
+      linkList.innerHTML = `
+        <li class="drive" style="border-left-color: #00bfff; background: rgba(224, 242, 254, 0.6);">
+          <span class="link-label">Status Klaim Premium</span>
+          <pre style="white-space: pre-wrap; font-size: 11px; margin: 0; color: #0056b3;">${JSON.stringify(data, null, 2)}</pre>
+        </li>
+      `;
+
+    } catch (e) {
+      resultArea.classList.remove("hidden");
+      errorMsg.classList.remove("hidden");
+      errorMsg.innerText = "ERROR API: " + e.message;
+    } finally {
+      loading.classList.add("hidden");
+      searchBtn.disabled = false;
+      searchBtn.innerText = "Klaim Premium";
+    }
+    return;
+  }
+
+  // Logika Link Video / Judul Lagu
   const val = inputField.value.trim();
   if (!val) { alert("Isi dulu cuy!"); return; }
 
@@ -79,10 +158,11 @@ searchBtn.addEventListener("click", async () => {
 
   try {
     if (mode === "link") {
-      if (!val.includes("tiktok.com")) { alert("Bukan link TikTok!"); return; }
-      const hasil = await ambilData(val);
-      tampilVideo(hasil.video);
-      cariLink(hasil.teks);
+      if (!val.includes("tiktok.com") && !val.startsWith("http")) { 
+        alert("Bukan link TikTok yang valid!"); 
+        return; 
+      }
+      await prosesLinkVideo(val);
     } else {
       await cariLagu(val);
     }
@@ -107,32 +187,31 @@ function resetAll() {
   gridList.innerHTML = "";
 }
 
-// SEARCH BY JUDUL LAGU
-async function cariLagu(keyword) {
-  try {
-    const target = `https://www.tikwm.com/api/feed/search?keywords=${encodeURIComponent(keyword)}&count=10`;
-    const data = await fetchTikwm(target);
+// ============================================
+// FITUR 1: LINK VIDEO (AM Preset Finder)
+// ============================================
+async function prosesLinkVideo(url) {
+  const data = await fetchAPI("/search/ampreset", { url });
+  
+  gridArea.classList.add("hidden");
+  resultArea.classList.remove("hidden");
 
-    if (!data || data.code !== 0) {
-      throw new Error(data?.msg || "API pencarian gagal.");
-    }
-
-    const videos = data.data?.videos;
-    if (!Array.isArray(videos) || videos.length === 0) {
-      throw new Error("Video tidak ditemukan. Coba kata kunci lain.");
-    }
-
-    videoTerakhir = videos;
-    tampilGrid(videos);
-  } catch (e) {
-    console.error("cariLagu error:", e);
-    resultArea.classList.remove("hidden");
-    errorMsg.classList.remove("hidden");
-    errorMsg.innerText = "Search error: " + e.message;
-  }
+  tampilVideo(data.video);
+  tampilPreset(data.presetLinks);
 }
 
-function tampilGrid(videos) {
+// ============================================
+// FITUR 2: JUDUL LAGU (TikTok Search)
+// ============================================
+async function cariLagu(keyword) {
+  const query = `preset ${keyword}`;
+  const data = await fetchAPI("/search/tiktok", { q: query, count: 10 });
+  
+  const videos = data.videos;
+  if (!videos || videos.length === 0) {
+    throw new Error("Video tidak ditemukan.");
+  }
+
   gridArea.classList.remove("hidden");
   gridList.innerHTML = "";
 
@@ -141,379 +220,138 @@ function tampilGrid(videos) {
     card.className = "card";
 
     const img = document.createElement("img");
-    img.src = v.cover || v.origin_cover || "";
+    img.src = v.cover || "";
     img.loading = "lazy";
     card.appendChild(img);
 
     const overlay = document.createElement("div");
     overlay.className = "card-info";
-    const user = v.author ? v.author.unique_id : "unknown";
-    overlay.innerHTML = `<span>@${user}</span><span>❤️ ${v.digg_count || 0}</span>`;
+    const user = v.author?.username || "unknown";
+    overlay.innerHTML = `<span>@${user}</span><span>▶</span>`;
     card.appendChild(overlay);
 
-    card.addEventListener("click", () => pilihVideo(v));
+    card.addEventListener("click", async () => {
+      resetAll();
+      loading.classList.remove("hidden");
+      try {
+        await prosesLinkVideo(v.url);
+      } catch (err) {
+        alert("Gagal ambil preset: " + err.message);
+      } finally {
+        loading.classList.add("hidden");
+      }
+    });
+    
     gridList.appendChild(card);
   });
 }
 
-// PILIH VIDEO DARI GRID
-async function pilihVideo(v) {
-  gridArea.classList.add("hidden");
-  resultArea.classList.remove("hidden");
-  errorMsg.classList.add("hidden");
-  linkList.innerHTML = "";
-  videoBox.innerHTML = "";
-  loading.classList.remove("hidden");
-
-  try {
-    const videoId = v.video_id || v.aweme_id || v.id || v.item_id;
-    const user = v.author ? v.author.unique_id : null;
-
-    tampilVideo(v);
-    if (user && videoId) tampilTombolTikTok(user, videoId);
-
-    const teks = [];
-    if (v.title) teks.push(v.title);
-    if (Array.isArray(v.content_desc)) teks.push(v.content_desc.join(" "));
-
-    if (videoId) {
-      const komen = await ambilKomentarByVideoId(videoId, user);
-      if (komen) teks.push(komen);
-    }
-
-    loading.classList.add("hidden");
-    cariLink(teks.join(" "));
-  } catch (e) {
-    console.error("pilihVideo error:", e);
-    loading.classList.add("hidden");
-    errorMsg.classList.remove("hidden");
-    errorMsg.innerText = "Error: " + e.message;
-  }
-}
-
-function tampilTombolTikTok(user, videoId) {
-  const btn = document.createElement("a");
-  btn.href = `https://www.tiktok.com/@${user}/video/${videoId}`;
-  btn.target = "_blank";
-  btn.rel = "noopener noreferrer";
-  btn.innerText = "🎵 Buka di TikTok";
-  Object.assign(btn.style, {
-    display: "block", textAlign: "center", background: "#ff0050",
-    color: "white", padding: "10px", borderRadius: "6px",
-    fontSize: "13px", fontWeight: "bold", textDecoration: "none",
-    marginTop: "10px", border: "2px solid black"
-  });
-  videoBox.appendChild(btn);
-}
-
-// AMBIL KOMENTAR BY VIDEO_ID (dari grid)
-async function ambilKomentarByVideoId(videoId, user) {
-  const teks = [];
-
-  const urls = [];
-  if (user) {
-    urls.push(`https://www.tiktok.com/@${user}/video/${videoId}`);
-    urls.push(`https://m.tiktok.com/@${user}/video/${videoId}`);
-  }
-  urls.push(`https://www.tiktok.com/video/${videoId}`);
-  urls.push(`https://m.tiktok.com/v/${videoId}.html`);
-
-  let data = null;
-
-  for (const u of urls) {
-    try {
-      data = await fetchTikwm(
-        `https://www.tikwm.com/api/comment/list?url=${encodeURIComponent(u)}&count=50`
-      );
-      if (data?.code === 0 && Array.isArray(data.data?.comments)) break;
-      data = null;
-    } catch (e) {
-      console.warn("comment/list error:", e.message);
-    }
-  }
-
-  if (!data || data?.code !== 0 || !Array.isArray(data.data?.comments)) {
-    return "";
-  }
-
-  const komentar = data.data.comments;
-  komentar.forEach(k => { if (k.text) teks.push(k.text); });
-
-  const punyaReply = komentar.filter(k => k.reply_total > 0).slice(0, 20);
-
-  for (const k of punyaReply) {
-    try {
-      await new Promise(r => setTimeout(r, 800));
-
-      const rd = await fetchTikwm(
-        `https://www.tikwm.com/api/comment/reply?video_id=${videoId}&comment_id=${k.id}&count=50`
-      );
-
-      if (rd?.code === 0 && Array.isArray(rd.data?.comments)) {
-        rd.data.comments.forEach(b => { if (b.text) teks.push(b.text); });
-
-        const nested = rd.data.comments.filter(b => b.reply_total > 0).slice(0, 10);
-        for (const n of nested) {
-          try {
-            await new Promise(r => setTimeout(r, 800));
-            const rd2 = await fetchTikwm(
-              `https://www.tikwm.com/api/comment/reply?video_id=${videoId}&comment_id=${n.id}&count=30`
-            );
-            if (rd2?.code === 0 && Array.isArray(rd2.data?.comments)) {
-              rd2.data.comments.forEach(b => { if (b.text) teks.push(b.text); });
-            }
-          } catch (e) { console.warn("nested gagal:", e.message); }
-        }
-      }
-    } catch (e) { console.warn("reply error:", e.message); }
-  }
-
-  return teks.join(" ");
-}
-
-// AMBIL DATA VIDEO (Link Video)
-async function ambilData(url) {
-  const videoUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
-  const komentarUrl = `https://www.tikwm.com/api/comment/list?url=${encodeURIComponent(url)}&count=50`;
-
-  const [dataVideo, dataKomen] = await Promise.all([
-    fetchTikwm(videoUrl).catch(() => null),
-    fetchTikwm(komentarUrl).catch(() => null)
-  ]);
-
-  if (!dataVideo || dataVideo.code !== 0 || !dataVideo.data) {
-    throw new Error("Data video kosong / link tidak valid");
-  }
-
-  const videoInfo = dataVideo.data;
-  const teks = [];
-  if (videoInfo.title) teks.push(videoInfo.title);
-
-  const realVideoId = videoInfo.id || videoInfo.video_id || extractVideoId(url);
-
-  if (dataKomen && dataKomen.code === 0 && Array.isArray(dataKomen.data?.comments)) {
-    const komentar = dataKomen.data.comments;
-    komentar.forEach(k => { if (k.text) teks.push(k.text); });
-
-    const punyaReply = komentar.filter(k => k.reply_total > 0).slice(0, 20);
-
-    for (const k of punyaReply) {
-      try {
-        await new Promise(r => setTimeout(r, 800));
-
-        const rd = await fetchTikwm(
-          `https://www.tikwm.com/api/comment/reply?video_id=${realVideoId}&comment_id=${k.id}&count=50`
-        );
-
-        if (rd?.code === 0 && Array.isArray(rd.data?.comments)) {
-          rd.data.comments.forEach(b => { if (b.text) teks.push(b.text); });
-
-          const nested = rd.data.comments.filter(b => b.reply_total > 0).slice(0, 10);
-          for (const n of nested) {
-            try {
-              await new Promise(r => setTimeout(r, 800));
-              const rd2 = await fetchTikwm(
-                `https://www.tikwm.com/api/comment/reply?video_id=${realVideoId}&comment_id=${n.id}&count=30`
-              );
-              if (rd2?.code === 0 && Array.isArray(rd2.data?.comments)) {
-                rd2.data.comments.forEach(b => { if (b.text) teks.push(b.text); });
-              }
-            } catch (e) { console.warn("nested gagal:", e.message); }
-          }
-        }
-      } catch (e) { console.warn("reply error:", e.message); }
-    }
-  }
-
-  return { teks: teks.join(" "), video: videoInfo };
-}
-
-// TAMPILIN VIDEO
+// ============================================
+// TAMPILKAN VIDEO PLAYER
+// ============================================
 function tampilVideo(v) {
-  const src = v.play || v.wmplay;
-  const thumb = v.cover || v.origin_cover || "";
-  if (!src) { fallbackThumb(v); return; }
+  if (!v || !v.playUrl) return;
 
-  const wrap = document.createElement("div");
-  Object.assign(wrap.style, {
-    position: "relative", borderRadius: "8px", overflow: "hidden",
-    border: "2px solid black", background: "black"
-  });
-
-  if (thumb) {
-    const img = document.createElement("img");
-    img.src = thumb;
-    img.style.width = "100%";
-    img.style.display = "block";
-    wrap.appendChild(img);
-  }
-
-  const btn = document.createElement("div");
-  btn.innerText = "▶";
-  Object.assign(btn.style, {
-    position: "absolute", top: "50%", left: "50%",
-    transform: "translate(-50%,-50%)", width: "55px", height: "55px",
-    borderRadius: "50%", background: "rgba(0,0,0,0.65)", color: "white",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: "22px", paddingLeft: "4px", cursor: "pointer"
-  });
-  wrap.appendChild(btn);
-
-  btn.addEventListener("click", () => {
-    wrap.innerHTML = "";
-    const video = document.createElement("video");
-    video.src = src;
-    video.controls = true;
-    video.playsInline = true;
-    video.preload = "none";
-    video.autoplay = true;
-    video.style.width = "100%";
-    video.style.display = "block";
-    video.style.background = "black";
-    wrap.appendChild(video);
-  });
-
-  videoBox.appendChild(wrap);
+  const video = document.createElement("video");
+  video.src = v.playUrl;
+  video.controls = true;
+  video.playsInline = true;
+  video.preload = "metadata";
+  video.poster = v.cover || "";
+  video.style.width = "100%";
+  video.style.borderRadius = "8px";
+  video.style.border = "2px solid black";
+  video.style.background = "black";
+  
+  videoBox.appendChild(video);
 
   const info = document.createElement("p");
-  const user = v.author ? v.author.unique_id : "unknown";
-  info.innerText = `@${user} • ${v.digg_count || 0} like • ${v.comment_count || 0} komentar`;
+  info.innerText = `@${v.author || 'unknown'} • ❤️ ${v.stats?.likes || 0} • 💬 ${v.stats?.comments || 0}`;
   info.style.fontSize = "12px";
   info.style.color = "#555";
   info.style.marginTop = "8px";
+  info.style.textAlign = "center";
   videoBox.appendChild(info);
 }
 
-function fallbackThumb(v) {
-  if (!v.cover && !v.origin_cover) {
-    videoBox.innerHTML = "<p style='font-size:12px;color:#888;text-align:center;'>Video tidak tersedia</p>";
-    return;
-  }
-  const img = document.createElement("img");
-  img.src = v.cover || v.origin_cover;
-  img.style.width = "100%";
-  img.style.borderRadius = "8px";
-  img.style.border = "2px solid black";
-  videoBox.appendChild(img);
-}
-
-// CARI LINK PRESET
-function cariLink(teks) {
-  const ketemu = teks.match(
-    /(?:https?:\/\/)?(?:www\.)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s,;!?)\]}>"']*)?/gi
-  ) || [];
-
-  const valid = ketemu
-    .map(l => l.trim().replace(/[.,;:!?)\]}>"']+$/, ""))
-    .filter(l => {
-      const low = l.toLowerCase();
-      return POLA_LINK.some(p => low.includes(p));
-    })
-    .map(l => (/^https?:\/\//i.test(l) ? l : "https://" + l));
-
-  const unik = [];
-  const seen = new Set();
-
-  for (const link of valid) {
-    const norm = link
-      .replace(/[?#].*$/, "")
-      .replace(/\/view\/?$/, "")
-      .replace(/\/+$/, "")
-      .toLowerCase();
-
-    if (!seen.has(norm)) {
-      seen.add(norm);
-      unik.push(link);
-    }
-  }
-
-  const prioritas = l => /drive\.google|docs\.google|5mb|alight/i.test(l) ? 0 : 1;
-  unik.sort((a, b) => prioritas(a) - prioritas(b));
-
+// ============================================
+// TAMPILKAN LIST PRESET
+// ============================================
+function tampilPreset(links) {
   resultArea.classList.remove("hidden");
-  if (unik.length === 0) {
+  
+  if (!links || links.length === 0) {
     errorMsg.classList.remove("hidden");
-    errorMsg.innerText = "Preset tidak ditemukan di video ini cuy. Coba video lain. 😢";
+    errorMsg.innerText = "Preset tidak ditemukan di video ini. 😢";
     return;
   }
-  unik.forEach(l => tambahItem(l));
+
+  links.forEach(item => {
+    const li = document.createElement("li");
+    const lowType = item.type?.toLowerCase() || "";
+    const lowUrl = item.url.toLowerCase();
+
+    let label = "LINK";
+    let href = item.url;
+    let kelas = "";
+
+    if (lowType.includes("xml") || lowUrl.includes("drive.google")) {
+      label = "FILE XML (DRIVE)";
+      href = ubahDrive(item.url);
+      kelas = "drive";
+    } else if (lowType.includes("5mb") || lowUrl.includes("alightcreative")) {
+      label = "5MB.APP";
+    }
+
+    if (kelas) li.classList.add(kelas);
+
+    const spanLabel = document.createElement("span");
+    spanLabel.className = "link-label";
+    spanLabel.innerText = `${label} ${item.size ? `(${item.size})` : ''}`;
+    li.appendChild(spanLabel);
+
+    if (item.title) {
+      const titleEl = document.createElement("div");
+      titleEl.innerText = item.title;
+      titleEl.style.fontWeight = "bold";
+      titleEl.style.marginBottom = "4px";
+      li.appendChild(titleEl);
+    }
+
+    const a = document.createElement("a");
+    a.href = href;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.innerText = item.url;
+    li.appendChild(a);
+
+    if (item.detail) {
+      const detailEl = document.createElement("div");
+      detailEl.innerText = `Sumber: ${item.detail}`;
+      detailEl.style.fontSize = "10px";
+      detailEl.style.color = "#666";
+      detailEl.style.marginTop = "4px";
+      li.appendChild(detailEl);
+    }
+
+    if (lowUrl.includes("drive.google")) {
+      const btn = document.createElement("a");
+      btn.href = href;
+      btn.target = "_blank";
+      btn.rel = "noopener noreferrer";
+      btn.className = "btn-download";
+      btn.innerText = "Download XML";
+      li.appendChild(document.createElement("br"));
+      li.appendChild(btn);
+    }
+
+    linkList.appendChild(li);
+  });
 }
 
-// TAMBAH ITEM KE LIST
-function tambahItem(link) {
-  const low = link.toLowerCase();
-  const li = document.createElement("li");
-
-  let label = "LINK";
-  let href = link;
-  let kelas = "";
-
-  if (low.includes("drive.google") || low.includes("docs.google")) {
-    label = "GOOGLE DRIVE";
-    href = ubahDrive(link);
-    kelas = "drive";
-  } else if (low.includes("5mb")) {
-    label = "5MB.APP";
-  } else if (low.includes("mediafire")) {
-    label = "MEDIAFIRE";
-  } else if (low.includes("mega.nz")) {
-    label = "MEGA";
-  } else if (low.includes("dropbox")) {
-    label = "DROPBOX";
-  } else if (low.includes("gofile")) {
-    label = "GOFILE";
-  } else if (low.includes("pixeldrain")) {
-    label = "PIXELDRAIN";
-  } else if (low.includes("whatsapp.com/channel")) {
-    label = "SALURAN WA";
-  } else if (low.includes("wa.me")) {
-    label = "WHATSAPP";
-  } else if (low.includes("alightcreative.com")) {
-    label = "ALIGHT CREATIVE";
-  } else if (low.includes("alight.link")) {
-    label = "ALIGHT.LINK";
-  } else if (low.includes("tinyurl") || low.includes("bit.ly") ||
-             low.includes("shorturl") || low.includes("sfl.gl") ||
-             low.includes("ouo.io") || low.includes("shrinkme") ||
-             low.includes("shrinke")) {
-    label = "SHORT LINK";
-  } else if (low.includes("linktr.ee")) {
-    label = "LINKTREE";
-  } else if (low.includes("sfile.mobi") || low.includes("zippy")) {
-    label = "SFILE";
-  } else if (low.endsWith(".xml") || low.includes("/xml/")) {
-    label = "FILE XML";
-    kelas = "xml";
-  }
-
-  if (kelas) li.classList.add(kelas);
-
-  const spanLabel = document.createElement("span");
-  spanLabel.className = "link-label";
-  spanLabel.innerText = label;
-  li.appendChild(spanLabel);
-
-  const a = document.createElement("a");
-  a.href = href;
-  a.target = "_blank";
-  a.rel = "noopener noreferrer";
-  a.innerText = link;
-  li.appendChild(a);
-
-  if (low.includes("drive.google")) {
-    const btn = document.createElement("a");
-    btn.href = href;
-    btn.target = "_blank";
-    btn.rel = "noopener noreferrer";
-    btn.className = "btn-download";
-    btn.innerText = "Download XML";
-    li.appendChild(document.createElement("br"));
-    li.appendChild(btn);
-  }
-
-  linkList.appendChild(li);
-}
-
+// ============================================
+// KONVERSI LINK GOOGLE DRIVE
+// ============================================
 function ubahDrive(url) {
   let id = null;
   const m1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);

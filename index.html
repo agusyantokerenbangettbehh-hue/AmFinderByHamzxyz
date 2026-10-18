@@ -5,7 +5,7 @@
   </head>
   <body>
     <div class="header">
-      <h1>Alight Motion Finder By Hamzxyz</h1>
+      <h1>Alight Motion Tools By Hamzxyz</h1>
       <p>Tanpa login dan tanpa iklan</p>
     </div>
 
@@ -13,10 +13,24 @@
       <div class="tabs">
         <button class="tab active" data-mode="link">Link Video</button>
         <button class="tab" data-mode="song">Judul Lagu</button>
+        <button class="tab" data-mode="amprem">Am Prem</button>
       </div>
 
-      <p id="labelInput">Masukan url tiktok</p>
-      <input type="text" id="inputField" placeholder="https://vt.tiktok.com/...">
+      <div id="defaultInput">
+        <p id="labelInput">Masukan url tiktok</p>
+        <input type="text" id="inputField" placeholder="https://vt.tiktok.com/...">
+      </div>
+
+      <!-- TAMBAHAN INPUT UNTUK AM PREM -->
+      <div id="ampremInput" class="hidden" style="text-align: left;">
+        <p style="font-size: 13px; color: #444; margin-bottom: 10px; font-weight: bold; text-align: center;">Langkah 1: Kirim Magic Link</p>
+        <input type="email" id="emailField" placeholder="kamu@gmail.com" style="margin-bottom: 10px;">
+        <button id="sendLinkBtn" class="amprem-btn" style="margin-bottom: 20px;">Kirim Magic Link</button>
+        
+        <p style="font-size: 13px; color: #444; margin-bottom: 10px; font-weight: bold; text-align: center;">Langkah 2: Klaim Premium</p>
+        <input type="text" id="linkField" placeholder="https://alightcreative.com/...">
+      </div>
+
       <button id="searchBtn">Cari</button>
 
       <div id="loading" class="loading hidden">
