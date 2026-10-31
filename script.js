@@ -227,7 +227,7 @@ async function cariLagu(keyword) {
     const overlay = document.createElement("div");
     overlay.className = "card-info";
     const user = v.author?.username || "unknown";
-    overlay.innerHTML = `<span>@${user}</span><span>▶</span>`;
+    overlay.innerHTML = `<span>@${user}</span><span>PUTAR</span>`;
     card.appendChild(overlay);
 
     card.addEventListener("click", async () => {
@@ -266,7 +266,7 @@ function tampilVideo(v) {
   videoBox.appendChild(video);
 
   const info = document.createElement("p");
-  info.innerText = `@${v.author || 'unknown'} • ❤️ ${v.stats?.likes || 0} • 💬 ${v.stats?.comments || 0}`;
+  info.innerText = `@${v.author || 'unknown'} • Like ${v.stats?.likes || 0} • Komen ${v.stats?.comments || 0}`;
   info.style.fontSize = "12px";
   info.style.color = "#555";
   info.style.marginTop = "8px";
@@ -282,7 +282,7 @@ function tampilPreset(links) {
   
   if (!links || links.length === 0) {
     errorMsg.classList.remove("hidden");
-    errorMsg.innerText = "Preset tidak ditemukan di video ini. 😢";
+    errorMsg.innerText = "Preset tidak ditemukan di video ini.";
     return;
   }
 

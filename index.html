@@ -1,12 +1,64 @@
-<html>
+<!DOCTYPE html>
+<html lang="id">
   <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Alight Motion Finder</title>
+    <script>
+      (function () {
+        var seen = false;
+        try { seen = localStorage.getItem('introSeen') === '1'; } catch (e) {}
+        if (!seen || location.search.indexOf('intro') > -1) {
+          document.documentElement.classList.add('has-intro');
+        }
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
+    <!-- INTRO (hanya pertama kali buka) -->
+    <div id="intro" class="intro">
+      <div class="shutter s1"></div>
+      <div class="shutter s2"></div>
+      <div class="shutter s3"></div>
+      <div class="shutter s4"></div>
+
+      <div class="intro-stage">
+        <div class="intro-tag">APP:</div>
+        <div class="intro-word w1">TIKTOK</div>
+        <div class="intro-amp">&amp;</div>
+        <div class="intro-word w2">ALIGHT MOTION</div>
+        <div class="intro-title">PRESET FINDER</div>
+        <div class="intro-bar"><div id="introFill" class="intro-fill"></div></div>
+        <div id="introPct" class="intro-pct">0%</div>
+      </div>
+
+      <button id="introSkip" class="intro-skip">LEWATI</button>
+    </div>
+
+    <!-- Bentuk melayang di latar -->
+    <div class="bg-shapes" aria-hidden="true">
+      <i></i><i></i><i></i><i></i><i></i>
+    </div>
+
     <div class="header">
-      <h1>Alight Motion Tools By Hamzxyz</h1>
+      <div class="app-badge">APP: TIKTOK &amp; ALIGHT MOTION</div>
+      <h1>Alight Motion Tools By <span class="hl">Hamzxyz</span></h1>
       <p>Tanpa login dan tanpa iklan</p>
+    </div>
+
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-track">
+        <span>PRESET ALIGHT MOTION * TANPA LOGIN * TANPA IKLAN * CARI DARI TIKTOK * </span>
+        <span>PRESET ALIGHT MOTION * TANPA LOGIN * TANPA IKLAN * CARI DARI TIKTOK * </span>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button id="helpBtn" class="tool-btn" type="button">CARA PAKAI</button>
+      <button id="favBtn" class="tool-btn" type="button">FAVORIT <span id="favCount" class="tool-count">0</span></button>
     </div>
 
     <div class="content">
@@ -18,16 +70,25 @@
 
       <div id="defaultInput">
         <p id="labelInput">Masukan url tiktok</p>
-        <input type="text" id="inputField" placeholder="https://vt.tiktok.com/...">
+        <div class="input-wrap">
+          <input type="text" id="inputField" placeholder="https://vt.tiktok.com/...">
+          <button id="pasteBtn" class="paste-btn" type="button">TEMPEL</button>
+        </div>
+        <div id="historyBox" class="history hidden">
+          <div class="history-head">
+            <span>RIWAYAT</span>
+            <button id="historyClear" type="button">HAPUS</button>
+          </div>
+          <div id="historyList" class="history-list"></div>
+        </div>
       </div>
 
-      <!-- TAMBAHAN INPUT UNTUK AM PREM -->
-      <div id="ampremInput" class="hidden" style="text-align: left;">
-        <p style="font-size: 13px; color: #444; margin-bottom: 10px; font-weight: bold; text-align: center;">Langkah 1: Kirim Magic Link</p>
-        <input type="email" id="emailField" placeholder="kamu@gmail.com" style="margin-bottom: 10px;">
-        <button id="sendLinkBtn" class="amprem-btn" style="margin-bottom: 20px;">Kirim Magic Link</button>
-        
-        <p style="font-size: 13px; color: #444; margin-bottom: 10px; font-weight: bold; text-align: center;">Langkah 2: Klaim Premium</p>
+      <div id="ampremInput" class="hidden">
+        <p class="step-label">Langkah 1: Kirim Magic Link</p>
+        <input type="email" id="emailField" placeholder="kamu@gmail.com">
+        <button id="sendLinkBtn" class="amprem-btn">Kirim Magic Link</button>
+
+        <p class="step-label">Langkah 2: Klaim Premium</p>
         <input type="text" id="linkField" placeholder="https://alightcreative.com/...">
       </div>
 
@@ -35,7 +96,8 @@
 
       <div id="loading" class="loading hidden">
         <div class="spinner"></div>
-        <p>Mencari preset... sabar cuy 😎</p>
+        <p>Mencari preset... sabar cuy</p>
+        <div class="skeleton"><i></i><i></i><i></i></div>
       </div>
     </div>
 
@@ -45,7 +107,7 @@
     </div>
 
     <div id="hasil" class="hasil-area hidden">
-      <button id="backBtn" class="back-btn">← Kembali</button>
+      <button id="backBtn" class="back-btn">KEMBALI</button>
       <div id="videoContainer"></div>
       <h3>Hasil pencarian</h3>
       <ul id="linkList"></ul>
@@ -55,14 +117,96 @@
     <div class="contantdev">
       <h2>Hubungi Dev Jika Kamu Menemukan Bug!</h2>
       <div class="sosial">
-        <a href="https://wa.me/628157154618">
-          <img src="img/wa.webp">
+        <a class="soc gh" href="https://github.com/agusyantokerenbangettbehh-hue" target="_blank" rel="noopener" aria-label="GitHub">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+          </svg>
         </a>
-        <a href="https://www.tiktok.com/@yanzknjut1?_r=1&_t=ZS-9AY6dIds6qb">
-          <img src="img/tt.webp">
+        <a class="soc ig" href="https://www.instagram.com/jlnqwe2?obrf=bnk0cDl4dTV1aDg2" target="_blank" rel="noopener" aria-label="Instagram">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+            <rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/>
+            <circle cx="12" cy="12" r="4.4"/>
+            <circle cx="17.3" cy="6.7" r="1.3" fill="currentColor" stroke="none"/>
+          </svg>
+        </a>
+        <a class="soc tt" href="https://www.tiktok.com/@yanzknjut1?_r=1&_t=ZS-9AY6dIds6qb" target="_blank" rel="noopener" aria-label="TikTok">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+          </svg>
         </a>
       </div>
     </div>
+
+    <!-- Modal cara pakai -->
+    <div id="helpModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-box">
+        <button class="modal-close" type="button" data-close>TUTUP</button>
+        <h3>Cara Pakai</h3>
+        <ol class="steps">
+          <li><b>Link Video:</b> tempel link TikTok, lalu tekan Cari.</li>
+          <li><b>Judul Lagu:</b> ketik judul atau keyword, lalu pilih video dari daftar.</li>
+          <li><b>Am Prem:</b> isi email, kirim magic link, tempel link verifikasi dari email, lalu klaim.</li>
+          <li><b>Hasil:</b> salin link, simpan ke favorit, atau kirim ke WhatsApp.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Modal favorit -->
+    <div id="favModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-box">
+        <button class="modal-close" type="button" data-close>TUTUP</button>
+        <h3>Favorit</h3>
+        <div id="favList"></div>
+        <button id="favClear" class="fav-clear" type="button">HAPUS SEMUA</button>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var intro = document.getElementById('intro');
+        if (!intro || !root.classList.contains('has-intro')) {
+          root.classList.add('intro-done');
+          return;
+        }
+        var fill = document.getElementById('introFill');
+        var pct = document.getElementById('introPct');
+        var skip = document.getElementById('introSkip');
+        var finished = false;
+        var start = performance.now();
+        var reduce = window.matchMedia &&
+          window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function finish() {
+          if (finished) return;
+          finished = true;
+          try { localStorage.setItem('introSeen', '1'); } catch (e) {}
+          root.classList.add('intro-done');
+          intro.classList.add('out');
+          setTimeout(function () {
+            intro.remove();
+            root.classList.remove('has-intro');
+          }, 1300);
+        }
+
+        skip.addEventListener('click', finish);
+        if (reduce) { finish(); return; }
+
+        function tick(now) {
+          if (finished) return;
+          var p = Math.min(1, Math.max(0, (now - start - 1900) / 1700));
+          var v = Math.round(p * 100);
+          fill.style.width = v + '%';
+          pct.textContent = v + '%';
+          if (p >= 1) { setTimeout(finish, 250); return; }
+          requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      })();
+    </script>
+    <script src="script.js"></script>
+    <script src="fitur.js"></script>
   </body>
-  <script src="script.js"></script>
 </html>
