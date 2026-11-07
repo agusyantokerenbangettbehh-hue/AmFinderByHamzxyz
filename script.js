@@ -73,7 +73,14 @@ tabs.forEach(t => {
 });
 
 backBtn.addEventListener("click", () => {
-  resetAll();
+  // Di mode lagu, "Kembali" menutup hasil saja dan daftar video tetap ada
+  if (mode === "song" && gridList.children.length) {
+    resetResult();
+    gridList.querySelectorAll(".card.selected").forEach(c => c.classList.remove("selected"));
+    gridArea.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    resetAll();
+  }
 });
 
 // ============================================
@@ -178,6 +185,13 @@ searchBtn.addEventListener("click", async () => {
   }
 });
 
+function resetResult() {
+  resultArea.classList.add("hidden");
+  errorMsg.classList.add("hidden");
+  linkList.innerHTML = "";
+  videoBox.innerHTML = "";
+}
+
 function resetAll() {
   resultArea.classList.add("hidden");
   gridArea.classList.add("hidden");
@@ -190,10 +204,10 @@ function resetAll() {
 // ============================================
 // FITUR 1: LINK VIDEO (AM Preset Finder)
 // ============================================
-async function prosesLinkVideo(url) {
+async function prosesLinkVideo(url, keepGrid = false) {
   const data = await fetchAPI("/search/ampreset", { url });
   
-  gridArea.classList.add("hidden");
+  if (!keepGrid) gridArea.classList.add("hidden");
   resultArea.classList.remove("hidden");
 
   tampilVideo(data.video);
@@ -227,18 +241,25 @@ async function cariLagu(keyword) {
     const overlay = document.createElement("div");
     overlay.className = "card-info";
     const user = v.author?.username || "unknown";
-    overlay.innerHTML = `<span>@${user}</span><span>PUTAR</span>`;
+    overlay.innerHTML = `<span>@${user}</span><span>Putar</span>`;
     card.appendChild(overlay);
 
     card.addEventListener("click", async () => {
-      resetAll();
-      loading.classList.remove("hidden");
+      if (gridList.classList.contains("busy")) return;
+      gridList.querySelectorAll(".card.selected").forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected", "busy");
+      gridList.classList.add("busy");
+      resetResult();
       try {
-        await prosesLinkVideo(v.url);
+        // keepGrid: daftar video tetap tampil, hasil muncul di atasnya
+        await prosesLinkVideo(v.url, true);
+        resultArea.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (err) {
+        card.classList.remove("selected");
         alert("Gagal ambil preset: " + err.message);
       } finally {
-        loading.classList.add("hidden");
+        card.classList.remove("busy");
+        gridList.classList.remove("busy");
       }
     });
     
@@ -291,16 +312,16 @@ function tampilPreset(links) {
     const lowType = item.type?.toLowerCase() || "";
     const lowUrl = item.url.toLowerCase();
 
-    let label = "LINK";
+    let label = "Link";
     let href = item.url;
     let kelas = "";
 
     if (lowType.includes("xml") || lowUrl.includes("drive.google")) {
-      label = "FILE XML (DRIVE)";
+      label = "File XML (Drive)";
       href = ubahDrive(item.url);
       kelas = "drive";
     } else if (lowType.includes("5mb") || lowUrl.includes("alightcreative")) {
-      label = "5MB.APP";
+      label = "5mb.app";
     }
 
     if (kelas) li.classList.add(kelas);

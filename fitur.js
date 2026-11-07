@@ -120,7 +120,7 @@
     Array.prototype.forEach.call(document.querySelectorAll(".fx-fav"), function (b) {
       var on = hasUrl(list, b.dataset.url);
       b.classList.toggle("on", on);
-      b.textContent = on ? "TERSIMPAN" : "SIMPAN";
+      b.textContent = on ? "Tersimpan" : "Simpan";
     });
     if (!$("#favModal").classList.contains("hidden")) renderFavList();
   }
@@ -134,7 +134,7 @@
     if (!list.length) {
       var p = document.createElement("p");
       p.className = "fav-empty";
-      p.textContent = "Belum ada favorit. Tekan SIMPAN di hasil pencarian.";
+      p.textContent = "Belum ada favorit. Tekan Simpan di hasil pencarian.";
       box.appendChild(p);
       return;
     }
@@ -157,11 +157,11 @@
 
       var bar = document.createElement("div");
       bar.className = "fx-bar";
-      bar.appendChild(mkBtn("BUKA", "fx-open", function () {
+      bar.appendChild(mkBtn("Buka", "fx-open", function () {
         window.open(f.url, "_blank", "noopener");
       }));
-      bar.appendChild(mkBtn("SALIN", "fx-copy", function () { salin(f.url); }));
-      bar.appendChild(mkBtn("HAPUS", "fx-del", function () {
+      bar.appendChild(mkBtn("Salin", "fx-copy", function () { salin(f.url); }));
+      bar.appendChild(mkBtn("Hapus", "fx-del", function () {
         save(KEY_FAV, load(KEY_FAV).filter(function (x) { return x.url !== f.url; }));
         refreshFavUI();
       }));
@@ -201,9 +201,9 @@
     var bar = document.createElement("div");
     bar.className = "fx-bar";
 
-    bar.appendChild(mkBtn("SALIN", "fx-copy", function () { salin(href); }));
+    bar.appendChild(mkBtn("Salin", "fx-copy", function () { salin(href); }));
 
-    var fav = mkBtn("SIMPAN", "fx-fav", function () {
+    var fav = mkBtn("Simpan", "fx-fav", function () {
       var list = load(KEY_FAV);
       if (hasUrl(list, href)) {
         list = list.filter(function (f) { return f.url !== href; });
@@ -218,7 +218,7 @@
     fav.dataset.url = href;
     bar.appendChild(fav);
 
-    bar.appendChild(mkBtn("WA", "fx-wa", function () {
+    bar.appendChild(mkBtn("WhatsApp", "fx-wa", function () {
       var text = (title ? title + "\n" : "") + href;
       window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
     }));
@@ -250,7 +250,7 @@
       c.type = "button";
       c.className = "chip";
       c.title = h.value;
-      c.textContent = (h.mode === "song" ? "LAGU: " : "LINK: ") + pendek(h.value);
+      c.textContent = (h.mode === "song" ? "Lagu: " : "Link: ") + pendek(h.value);
       c.addEventListener("click", function () {
         var tab = document.querySelector('.tab[data-mode="' + h.mode + '"]');
         if (tab) tab.click();
@@ -282,6 +282,28 @@
   $("#historyClear").addEventListener("click", function () {
     save(KEY_HIS, []);
     renderHistory();
+  });
+
+  // ---------- Animasi ganti tab ----------
+  var tabsEl = document.querySelector(".tabs");
+  var tabBtns = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+  var lastTab = 0;
+
+  tabBtns.forEach(function (t, i) {
+    t.addEventListener("click", function () {
+      if (i === lastTab) return;
+      var dir = i > lastTab ? 1 : -1;
+      lastTab = i;
+      tabsEl.style.setProperty("--i", i); // playhead bergeser ke tab baru
+      ["defaultInput", "ampremInput"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el.classList.contains("hidden")) return;
+        el.style.setProperty("--dir", dir);
+        el.classList.remove("swap");
+        void el.offsetWidth; // mulai ulang animasi
+        el.classList.add("swap");
+      });
+    });
   });
 
   // ---------- Mulai ----------

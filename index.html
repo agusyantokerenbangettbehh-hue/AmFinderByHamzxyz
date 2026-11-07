@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Alight Motion Finder</title>
+    <meta name="theme-color" content="#e9ecf4">
+    <title>Alight Motion Tools by Hamzxyz</title>
     <script>
       (function () {
         var seen = false;
@@ -14,70 +15,49 @@
       })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Mono:wght@400;500&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <!-- INTRO (hanya pertama kali buka) -->
+    <!-- Intro (hanya pertama kali buka) -->
     <div id="intro" class="intro">
-      <div class="shutter s1"></div>
-      <div class="shutter s2"></div>
-      <div class="shutter s3"></div>
-      <div class="shutter s4"></div>
-
       <div class="intro-stage">
-        <div class="intro-tag">APP:</div>
-        <div class="intro-word w1">TIKTOK</div>
-        <div class="intro-amp">&amp;</div>
-        <div class="intro-word w2">ALIGHT MOTION</div>
-        <div class="intro-title">PRESET FINDER</div>
+        <p class="intro-tag">Alight Motion Tools</p>
+        <h2 class="intro-title">Preset Finder</h2>
         <div class="intro-bar"><div id="introFill" class="intro-fill"></div></div>
         <div id="introPct" class="intro-pct">0%</div>
       </div>
-
-      <button id="introSkip" class="intro-skip">LEWATI</button>
-    </div>
-
-    <!-- Bentuk melayang di latar -->
-    <div class="bg-shapes" aria-hidden="true">
-      <i></i><i></i><i></i><i></i><i></i>
+      <button id="introSkip" class="intro-skip" type="button">Lewati</button>
     </div>
 
     <div class="header">
-      <div class="app-badge">APP: TIKTOK &amp; ALIGHT MOTION</div>
-      <h1>Alight Motion Tools By <span class="hl">Hamzxyz</span></h1>
-      <p>Tanpa login dan tanpa iklan</p>
-    </div>
-
-    <div class="ticker" aria-hidden="true">
-      <div class="ticker-track">
-        <span>PRESET ALIGHT MOTION * TANPA LOGIN * TANPA IKLAN * CARI DARI TIKTOK * </span>
-        <span>PRESET ALIGHT MOTION * TANPA LOGIN * TANPA IKLAN * CARI DARI TIKTOK * </span>
-      </div>
+      <h1>Alight Motion Tools</h1>
+      <p>by Hamzxyz. Tempel link TikTok, dapat link preset Alight Motion-nya. Tanpa login, tanpa iklan.</p>
     </div>
 
     <div class="toolbar">
-      <button id="helpBtn" class="tool-btn" type="button">CARA PAKAI</button>
-      <button id="favBtn" class="tool-btn" type="button">FAVORIT <span id="favCount" class="tool-count">0</span></button>
+      <button id="helpBtn" class="tool-btn" type="button">Cara pakai</button>
+      <button id="favBtn" class="tool-btn" type="button">Favorit <span id="favCount" class="tool-count">0</span></button>
     </div>
 
     <div class="content">
       <div class="tabs">
-        <button class="tab active" data-mode="link">Link Video</button>
-        <button class="tab" data-mode="song">Judul Lagu</button>
-        <button class="tab" data-mode="amprem">Am Prem</button>
+        <button class="tab active" data-mode="link" type="button">Link Video</button>
+        <button class="tab" data-mode="song" type="button">Judul Lagu</button>
+        <button class="tab" data-mode="amprem" type="button">Am Prem</button>
       </div>
 
       <div id="defaultInput">
         <p id="labelInput">Masukan url tiktok</p>
         <div class="input-wrap">
           <input type="text" id="inputField" placeholder="https://vt.tiktok.com/...">
-          <button id="pasteBtn" class="paste-btn" type="button">TEMPEL</button>
+          <button id="pasteBtn" class="paste-btn" type="button">Tempel</button>
         </div>
         <div id="historyBox" class="history hidden">
           <div class="history-head">
-            <span>RIWAYAT</span>
-            <button id="historyClear" type="button">HAPUS</button>
+            <span>Riwayat</span>
+            <button id="historyClear" type="button">Hapus</button>
           </div>
           <div id="historyList" class="history-list"></div>
         </div>
@@ -86,13 +66,13 @@
       <div id="ampremInput" class="hidden">
         <p class="step-label">Langkah 1: Kirim Magic Link</p>
         <input type="email" id="emailField" placeholder="kamu@gmail.com">
-        <button id="sendLinkBtn" class="amprem-btn">Kirim Magic Link</button>
+        <button id="sendLinkBtn" class="amprem-btn" type="button">Kirim Magic Link</button>
 
         <p class="step-label">Langkah 2: Klaim Premium</p>
         <input type="text" id="linkField" placeholder="https://alightcreative.com/...">
       </div>
 
-      <button id="searchBtn">Cari</button>
+      <button id="searchBtn" type="button">Cari</button>
 
       <div id="loading" class="loading hidden">
         <div class="spinner"></div>
@@ -101,21 +81,21 @@
       </div>
     </div>
 
-    <div id="gridHasil" class="grid-area hidden">
-      <h3>Pilih video:</h3>
-      <div id="gridList" class="grid-list"></div>
-    </div>
-
     <div id="hasil" class="hasil-area hidden">
-      <button id="backBtn" class="back-btn">KEMBALI</button>
+      <button id="backBtn" class="back-btn" type="button">Kembali</button>
       <div id="videoContainer"></div>
       <h3>Hasil pencarian</h3>
       <ul id="linkList"></ul>
       <p id="error" class="error-msg hidden"></p>
     </div>
 
+    <div id="gridHasil" class="grid-area hidden">
+      <h3>Pilih video</h3>
+      <div id="gridList" class="grid-list"></div>
+    </div>
+
     <div class="contantdev">
-      <h2>Hubungi Dev Jika Kamu Menemukan Bug!</h2>
+      <h2>Nemu bug? Hubungi dev.</h2>
       <div class="sosial">
         <a class="soc gh" href="https://github.com/agusyantokerenbangettbehh-hue" target="_blank" rel="noopener" aria-label="GitHub">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -138,10 +118,10 @@
     </div>
 
     <!-- Modal cara pakai -->
-    <div id="helpModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div id="helpModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Cara pakai">
       <div class="modal-box">
-        <button class="modal-close" type="button" data-close>TUTUP</button>
-        <h3>Cara Pakai</h3>
+        <button class="modal-close" type="button" data-close>Tutup</button>
+        <h3>Cara pakai</h3>
         <ol class="steps">
           <li><b>Link Video:</b> tempel link TikTok, lalu tekan Cari.</li>
           <li><b>Judul Lagu:</b> ketik judul atau keyword, lalu pilih video dari daftar.</li>
@@ -152,16 +132,16 @@
     </div>
 
     <!-- Modal favorit -->
-    <div id="favModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div id="favModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Favorit">
       <div class="modal-box">
-        <button class="modal-close" type="button" data-close>TUTUP</button>
+        <button class="modal-close" type="button" data-close>Tutup</button>
         <h3>Favorit</h3>
         <div id="favList"></div>
-        <button id="favClear" class="fav-clear" type="button">HAPUS SEMUA</button>
+        <button id="favClear" class="fav-clear" type="button">Hapus semua</button>
       </div>
     </div>
 
-    <div id="toast" class="toast"></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script>
       (function () {
@@ -188,7 +168,7 @@
           setTimeout(function () {
             intro.remove();
             root.classList.remove('has-intro');
-          }, 1300);
+          }, 700);
         }
 
         skip.addEventListener('click', finish);
@@ -196,7 +176,7 @@
 
         function tick(now) {
           if (finished) return;
-          var p = Math.min(1, Math.max(0, (now - start - 1900) / 1700));
+          var p = Math.min(1, Math.max(0, (now - start - 300) / 1700));
           var v = Math.round(p * 100);
           fill.style.width = v + '%';
           pct.textContent = v + '%';
